@@ -1,12 +1,9 @@
-name: Build
+name: Publish
 
 on:
   push:
     branches:
-      - "*"
-      - "hotfix/*"
-      - "feature/*"
-      - "!master"
+      - "master"
 
 jobs:
   build:
@@ -51,11 +48,30 @@ jobs:
           dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
 
       - name: Build, test & analyze solution
-        shell: powershell
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: powershell
         run: |
           .\.sonar\scanner\dotnet-sonarscanner begin /k:"SutroMachine_geometry3Sharp" /o:"sutromachine" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:"sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml"
           dotnet test --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Publish on version change
+        id: publish_nuget
+        uses: AraHaan/publish-nuget@patch-2
+        with:
+          # Relative to repository root
+          PROJECT_FILE_PATH: geometry3Sharp/geometry3Sharp.csproj
+
+          # Regex pattern to extract version info in a capturing group
+          VERSION_REGEX: <Version>(.*)<\/Version>
+
+          # Flag to enable / disable git tagging
+          TAG_COMMIT: true
+
+          # Format of the git tag, [*] gets replaced with version
+          TAG_FORMAT: v*
+
+          # nuget.org API key
+          NUGET_KEY: ${{secrets.NUGET_API_KEY}}
