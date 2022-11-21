@@ -21,7 +21,6 @@ jobs:
         with:
           distribution: 'microsoft'
           java-version: '11'
-          cache: 'gradle'
 
       # Speed-up analysis by caching the scanner workspace
       - name: Cache SonarCloud workspace
