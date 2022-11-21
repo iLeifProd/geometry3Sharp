@@ -20,7 +20,7 @@ jobs:
         run: git lfs pull
 
       - name: Cache SonarCloud packages
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~\sonar\cache
           key: ${{ runner.os }}-sonar
@@ -47,7 +47,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-          .\.sonar\scanner\dotnet-sonarscanner begin /k:"SutroMachine_Sutro.geometry3Sharp" /o:"sutromachine" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:"sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml"
+          .\.sonar\scanner\dotnet-sonarscanner begin /k:"SutroMachine_geometry3Sharp" /o:"sutromachine" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:"sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml"
           dotnet test --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
