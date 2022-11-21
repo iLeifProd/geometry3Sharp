@@ -35,7 +35,7 @@ namespace geometry3Sharp.Tests.io
             {
                 fill = "blue",
                 fillOpacity = 0.3f,
-                stroke="blue",
+                stroke = "blue",
                 stroke_width = 0.1f
             });
 
@@ -48,6 +48,26 @@ namespace geometry3Sharp.Tests.io
             });
 
             writer.Write("opacity.svg");
+        }
+
+        [TestMethod]
+        public void TestGeneralPolygon2d()
+        {
+            var writer = new SVGWriter();
+
+            var polyWithHoles = new GeneralPolygon2d(Polygon2d.MakeRectangle(Vector2d.Zero, 10, 20));
+            var hole1 = Polygon2d.MakeCircle(3, 16).Translate(new Vector2d(1, 5));
+            var hole2 = Polygon2d.MakeCircle(3, 16).Translate(new Vector2d(-1, -5));
+            hole1.Reverse();
+            hole2.Reverse();
+            polyWithHoles.AddHole(hole1);
+            polyWithHoles.AddHole(hole2);
+
+            var style = SVGWriter.Style.Filled("blue", "blue", 0.1f);
+            style.fillOpacity = 0.3f;
+            writer.AddPolygon(polyWithHoles, style);
+
+            writer.Write("holes.svg");
         }
     }
 }

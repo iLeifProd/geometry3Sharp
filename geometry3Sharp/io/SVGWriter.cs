@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
-using System.Globalization;
 
 namespace g3
 {
@@ -24,7 +24,6 @@ namespace g3
             public string Name { get; set; }
             public List<object> Objects { get; set; }
         }
-
 
         public class Style
         {
@@ -51,9 +50,9 @@ namespace g3
                 StringBuilder b = new StringBuilder();
 
                 if (fill.Length > 0)
-                { 
-                    b.Append("fill:"); 
-                    b.Append(fill); 
+                {
+                    b.Append("fill:");
+                    b.Append(fill);
                     b.Append(';');
                 }
 
@@ -65,7 +64,7 @@ namespace g3
                 }
 
                 if (stroke.Length > 0)
-                { 
+                {
                     b.Append("stroke:");
                     b.Append(stroke);
                     b.Append(';');
@@ -137,6 +136,19 @@ namespace g3
         }
 
         public void AddPolygon(Polygon2d poly, Style style)
+        {
+            CurrentLayer.Objects.Add(poly);
+            Styles[poly] = style;
+            Bounds.Contain(poly.Bounds);
+        }
+
+        public void AddPolygon(GeneralPolygon2d poly)
+        {
+            CurrentLayer.Objects.Add(poly);
+            Bounds.Contain(poly.Bounds);
+        }
+
+        public void AddPolygon(GeneralPolygon2d poly, Style style)
         {
             CurrentLayer.Objects.Add(poly);
             Styles[poly] = style;
@@ -281,22 +293,43 @@ namespace g3
         {
             foreach (var o in objects)
             {
-                if (o is Polygon2d)
-                    write_polygon(o as Polygon2d, w);
-                else if (o is PolyLine2d)
-                    write_polyline(o as PolyLine2d, w);
-                else if (o is Circle2d)
-                    write_circle(o as Circle2d, w);
-                else if (o is Arc2d)
-                    write_arc(o as Arc2d, w);
-                else if (o is Segment2dBox)
-                    write_line(o as Segment2dBox, w);
-                else if (o is DGraph2)
-                    write_graph(o as DGraph2, w);
-                else if (o is PlanarComplex)
-                    write_complex(o as PlanarComplex, w);
-                else
-                    throw new NotSupportedException("SVGWriter.Write: unknown object type " + o.GetType().ToString());
+                switch (o)
+                {
+                    case Polygon2d polygon:
+                        write_polygon(polygon, w);
+                        break;
+
+                    case GeneralPolygon2d gpolygon:
+                        write_general_polygon(gpolygon, w);
+                        break;
+
+                    case PolyLine2d polyline:
+                        write_polyline(polyline, w);
+                        break;
+
+                    case Circle2d circle:
+                        write_circle(circle, w);
+                        break;
+
+                    case Arc2d arc:
+                        write_arc(arc, w);
+                        break;
+
+                    case Segment2dBox segmentBox:
+                        write_line(segmentBox, w);
+                        break;
+
+                    case DGraph2 graph:
+                        write_graph(graph, w);
+                        break;
+
+                    case PlanarComplex complex:
+                        write_complex(complex, w);
+                        break;
+
+                    default:
+                        throw new NotSupportedException("SVGWriter.Write: unknown object type " + o.GetType().ToString());
+                }
             }
         }
 
@@ -392,6 +425,23 @@ namespace g3
                 if (i < poly.VertexCount - 1)
                     b.Append(' ');
             }
+            b.Append("\" ");
+            append_style(b, poly, DefaultPolygonStyle);
+            b.Append(" />");
+
+            w.WriteLine(b);
+        }
+
+        protected void write_general_polygon(GeneralPolygon2d poly, StreamWriter w)
+        {
+            StringBuilder b = new StringBuilder();
+            b.Append("<path d=\"");
+            AppendPath(b, poly.Outer);
+            foreach (var hole in poly.Holes)
+            {
+                AppendPath(b, hole);
+            }
+
             b.Append("\" ");
             append_style(b, poly, DefaultPolygonStyle);
             b.Append(" />");
@@ -552,6 +602,20 @@ namespace g3
             b.Append("style=\"");
             b.Append(style.ToString());
             b.Append("\"");
+        }
+
+        private void AppendPath(StringBuilder b, Polygon2d poly)
+        {
+            b.Append("M ");
+            for (int i = 0; i < poly.VertexCount; ++i)
+            {
+                Vector2d v = MapPt(poly[i]);
+                b.Append(Math.Round(v.x, Precision));
+                b.Append(',');
+                b.Append(Math.Round(v.y, Precision));
+                b.Append(' ');
+            }
+            b.Append("z");
         }
 
         protected string get_style(object o, Style defaultStyle)
