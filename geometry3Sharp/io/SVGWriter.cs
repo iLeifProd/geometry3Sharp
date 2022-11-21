@@ -9,7 +9,9 @@ namespace g3
 {
     public class SVGWriter
     {
-        public bool FlipY = true;
+        public bool FlipY { get; set; } = true;
+
+        public bool NonScalingStroke { get; set; } = false;
 
         protected class Layer
         {
@@ -24,11 +26,13 @@ namespace g3
         }
 
 
-        public struct Style
+        public class Style
         {
-            public string fill;
-            public string stroke;
-            public float stroke_width;
+            public string fill { get; set; }
+            public string stroke { get; set; }
+            public float stroke_width { get; set; }
+
+            public float fillOpacity { get; set; } = 1;
 
             public static readonly Style Default = new Style() { fill = "none", stroke = "black", stroke_width = 1 };
 
@@ -45,29 +49,55 @@ namespace g3
             public override string ToString()
             {
                 StringBuilder b = new StringBuilder();
-                if (fill.Length > 0) { b.Append("fill:"); b.Append(fill); b.Append(';'); }
-                if (stroke.Length > 0) { b.Append("stroke:"); b.Append(stroke); b.Append(';'); }
-                if (stroke_width > 0) { b.Append("stroke-width:"); b.Append(stroke_width); b.Append(";"); }
+
+                if (fill.Length > 0)
+                { 
+                    b.Append("fill:"); 
+                    b.Append(fill); 
+                    b.Append(';');
+                }
+
+                if (fillOpacity < 1f)
+                {
+                    b.Append("fill-opacity:");
+                    b.Append(fillOpacity);
+                    b.Append(';');
+                }
+
+                if (stroke.Length > 0)
+                { 
+                    b.Append("stroke:");
+                    b.Append(stroke);
+                    b.Append(';');
+                }
+
+                if (stroke_width > 0)
+                {
+                    b.Append("stroke-width:");
+                    b.Append(stroke_width);
+                    b.Append(";");
+                }
+
                 return b.ToString();
             }
         }
 
-        private Dictionary<object, Style> Styles = new Dictionary<object, Style>();
+        protected Dictionary<object, Style> Styles = new Dictionary<object, Style>();
 
-        public Style DefaultPolygonStyle;
-        public Style DefaultPolylineStyle;
-        public Style DefaultDGraphStyle;
-        public Style DefaultCircleStyle;
-        public Style DefaultArcStyle;
-        public Style DefaultLineStyle;
+        public Style DefaultPolygonStyle { get; set; }
+        public Style DefaultPolylineStyle { get; set; }
+        public Style DefaultDGraphStyle { get; set; }
+        public Style DefaultCircleStyle { get; set; }
+        public Style DefaultArcStyle { get; set; }
+        public Style DefaultLineStyle { get; set; }
 
-        private List<Layer> Layers;
-        private Layer CurrentLayer;
+        protected List<Layer> Layers;
+        protected Layer CurrentLayer;
 
-        private AxisAlignedBox2d Bounds;
+        protected AxisAlignedBox2d Bounds;
 
-        public int Precision = 3;
-        public double BoundsPad = 10;
+        public int Precision { get; set; } = 3;
+        public double BoundsPad { get; set; } = 10;
 
         public SVGWriter()
         {
@@ -237,17 +267,17 @@ namespace g3
             }
         }
 
-        private void CloseGroup(StreamWriter w)
+        protected void CloseGroup(StreamWriter w)
         {
             w.WriteLine("</g>");
         }
 
-        private void OpenGroup(string name, StreamWriter w)
+        protected void OpenGroup(string name, StreamWriter w)
         {
             w.WriteLine($"<g id=\"{name}\">");
         }
 
-        private void WriteObjects(List<object> objects, StreamWriter w)
+        protected void WriteObjects(List<object> objects, StreamWriter w)
         {
             foreach (var o in objects)
             {
@@ -266,7 +296,7 @@ namespace g3
                 else if (o is PlanarComplex)
                     write_complex(o as PlanarComplex, w);
                 else
-                    throw new Exception("SVGWriter.Write: unknown object type " + o.GetType().ToString());
+                    throw new NotSupportedException("SVGWriter.Write: unknown object type " + o.GetType().ToString());
             }
         }
 
@@ -330,7 +360,7 @@ namespace g3
                 return v;
         }
 
-        private void write_header_1_1(StreamWriter w)
+        protected void write_header_1_1(StreamWriter w)
         {
             StringBuilder b = new StringBuilder();
 
@@ -349,7 +379,7 @@ namespace g3
             w.WriteLine(b);
         }
 
-        private void write_polygon(Polygon2d poly, StreamWriter w)
+        protected void write_polygon(Polygon2d poly, StreamWriter w)
         {
             StringBuilder b = new StringBuilder();
             b.Append("<polygon points=\"");
@@ -363,13 +393,13 @@ namespace g3
                     b.Append(' ');
             }
             b.Append("\" ");
-            append_style(b, poly, ref DefaultPolygonStyle);
+            append_style(b, poly, DefaultPolygonStyle);
             b.Append(" />");
 
             w.WriteLine(b);
         }
 
-        private void write_polyline(PolyLine2d poly, StreamWriter w)
+        protected void write_polyline(PolyLine2d poly, StreamWriter w)
         {
             StringBuilder b = new StringBuilder();
             b.Append("<polyline points=\"");
@@ -383,15 +413,15 @@ namespace g3
                     b.Append(' ');
             }
             b.Append("\" ");
-            append_style(b, poly, ref DefaultPolylineStyle);
+            append_style(b, poly, DefaultPolylineStyle);
             b.Append(" />");
 
             w.WriteLine(b);
         }
 
-        private void write_graph(DGraph2 graph, StreamWriter w)
+        protected void write_graph(DGraph2 graph, StreamWriter w)
         {
-            string style = get_style(graph, ref DefaultDGraphStyle);
+            string style = get_style(graph, DefaultDGraphStyle);
 
             StringBuilder b = new StringBuilder();
             foreach (int eid in graph.EdgeIndices())
@@ -410,7 +440,7 @@ namespace g3
             w.WriteLine(b);
         }
 
-        private void write_circle(Circle2d circle, StreamWriter w)
+        protected void write_circle(Circle2d circle, StreamWriter w)
         {
             StringBuilder b = new StringBuilder();
             b.Append("<circle ");
@@ -418,12 +448,12 @@ namespace g3
             append_property("cx", c.x, b, true);
             append_property("cy", c.y, b, true);
             append_property("r", circle.Radius, b, true);
-            append_style(b, circle, ref DefaultCircleStyle);
+            append_style(b, circle, DefaultCircleStyle);
             b.Append(" />");
             w.WriteLine(b);
         }
 
-        private void write_arc(Arc2d arc, StreamWriter w)
+        protected void write_arc(Arc2d arc, StreamWriter w)
         {
             StringBuilder b = new StringBuilder();
             Vector2d vStart = MapPt(arc.P0);
@@ -462,13 +492,13 @@ namespace g3
 
             b.Append("\" ");     // close path
 
-            append_style(b, arc, ref DefaultArcStyle);
+            append_style(b, arc, DefaultArcStyle);
 
             b.Append(" />");
             w.WriteLine(b);
         }
 
-        private void write_line(Segment2dBox segbox, StreamWriter w)
+        protected void write_line(Segment2dBox segbox, StreamWriter w)
         {
             Segment2d seg = (Segment2d)segbox;
             StringBuilder b = new StringBuilder();
@@ -478,12 +508,12 @@ namespace g3
             append_property("y1", p0.y, b, true);
             append_property("x2", p1.x, b, true);
             append_property("y2", p1.y, b, true);
-            append_style(b, segbox, ref DefaultLineStyle);
+            append_style(b, segbox, DefaultLineStyle);
             b.Append(" />");
             w.WriteLine(b);
         }
 
-        private void write_complex(PlanarComplex complex, StreamWriter w)
+        protected void write_complex(PlanarComplex complex, StreamWriter w)
         {
             foreach (var elem in complex.ElementsItr())
             {
@@ -504,7 +534,7 @@ namespace g3
             }
         }
 
-        private void append_property(string name, double val, StringBuilder b, bool trailSpace = true)
+        protected void append_property(string name, double val, StringBuilder b, bool trailSpace = true)
         {
             b.Append(name); b.Append("=\"");
             b.Append(Math.Round(val, Precision));
@@ -514,20 +544,20 @@ namespace g3
                 b.Append("\"");
         }
 
-        private void append_style(StringBuilder b, object o, ref Style defaultStyle)
+        protected void append_style(StringBuilder b, object o, Style defaultStyle)
         {
             Style style;
-            if (Styles.TryGetValue(o, out style) == false)
+            if (!Styles.TryGetValue(o, out style))
                 style = defaultStyle;
             b.Append("style=\"");
             b.Append(style.ToString());
             b.Append("\"");
         }
 
-        private string get_style(object o, ref Style defaultStyle)
+        protected string get_style(object o, Style defaultStyle)
         {
             Style style;
-            if (Styles.TryGetValue(o, out style) == false)
+            if (!Styles.TryGetValue(o, out style))
                 style = defaultStyle;
             return "style=\"" + style.ToString() + "\"";
         }

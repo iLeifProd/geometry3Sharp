@@ -1,8 +1,5 @@
 ﻿using g3;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace geometry3Sharp.Tests.io
 {
@@ -27,6 +24,30 @@ namespace geometry3Sharp.Tests.io
             writer.StartNewLayer("layer-1");
             writer.AddLine(new Segment2d(Vector2d.Zero, Vector2d.AxisY));
             writer.Write("layers.svg");
+        }
+
+        [TestMethod]
+        public void TestOpacity()
+        {
+            var writer = new SVGWriter();
+
+            writer.AddPolygon(Polygon2d.MakeRectangle(Vector2d.Zero, 6, 12), new SVGWriter.Style()
+            {
+                fill = "blue",
+                fillOpacity = 0.3f,
+                stroke="blue",
+                stroke_width = 0.1f
+            });
+
+            writer.AddPolygon(Polygon2d.MakeRectangle(Vector2d.Zero, 12, 6), new SVGWriter.Style()
+            {
+                fill = "red",
+                fillOpacity = 0.3f,
+                stroke = "red",
+                stroke_width = 0.1f
+            });
+
+            writer.Write("opacity.svg");
         }
     }
 }
