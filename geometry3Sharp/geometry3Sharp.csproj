@@ -1,24 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+  <!--<PropertyGroup>
     <PackageId>Sutro.geometry3Sharp</PackageId>
     <Version>1.0.20</Version>
     <PackageDescription>C# library for 3D geometric computation, mesh algorithms, etc.</PackageDescription>
     <RepositoryUrl>https://github.com/SutroMachine/geometry3Sharp</RepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
-  <PropertyGroup>
+  <!--<PropertyGroup>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <AllowedOutputExtensionsInPackageBuildOutputFolder>
       $(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb
     </AllowedOutputExtensionsInPackageBuildOutputFolder>
-  </PropertyGroup>
+  </PropertyGroup>-->
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Company>gradientspace</Company>
     <Copyright>Copyright © Ryan Schmidt/gradientspace  2016</Copyright>
@@ -40,6 +40,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="extensions\" />
   </ItemGroup>
 
 </Project>
