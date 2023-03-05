@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 
+using static g3.AMFReader;
+
 namespace g3
 {
 
@@ -35,7 +37,9 @@ namespace g3
             iCurBlock = copy.iCurBlock;
             iCurBlockUsed = copy.iCurBlockUsed;
             Blocks = new List<T[]>();
+            
             for ( int i = 0; i < copy.Blocks.Count; ++i ) {
+
                 Blocks.Add(new T[nBlockSize]);
                 Array.Copy(copy.Blocks[i], Blocks[i], copy.Blocks[i].Length);
             }
@@ -418,6 +422,5 @@ namespace g3
                 yield return new DBlock() { data = Blocks[i], usedCount = nBlockSize };
             yield return new DBlock() { data = Blocks[iCurBlock], usedCount = iCurBlockUsed };
 		}
-
     }
 }

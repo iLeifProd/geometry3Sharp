@@ -263,8 +263,6 @@ namespace g3
                 s += free_indices[i].ToString() + " ";
             return s;
         }
-
-
 	}
 }
 

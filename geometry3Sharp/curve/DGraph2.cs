@@ -333,7 +333,42 @@ namespace g3
         }
 
 
+        public DGraph2 Clone()
+        {
+            DVector<List<int>> vertexEdges = null;
+            if (vertex_edges != null)
+            {
+                vertexEdges = new DVector<List<int>>();
 
+                for (int i = 0; i < vertex_edges.Length; i++)
+                {
+					var item = vertex_edges[i];
+                    if (item is null)
+                    {
+						//vertexEdges.insertAt(null, i);
+						vertexEdges.Add(default(List<int>));
+						continue;
+					}
+					//vertexEdges.insert(new List<int>(item), i);
+					vertexEdges.Add(new List<int>(item));
+                }
+            }
+
+            return new DGraph2()
+            {
+                colors = colors is null ? null : new DVector<float>(colors),
+                edges = edges is null ? null : new DVector<int>(edges),
+                vertices = vertices is null ? null : new DVector<double>(vertices),
+                vertex_edges = vertexEdges, //vertex_edges is null ? null : new DVector<List<int>>(vertex_edges),
+                cached_bounds = new AxisAlignedBox2d(cached_bounds),
+                edges_refcount = new RefCountVector(edges_refcount),
+                vertices_refcount = new RefCountVector(vertices_refcount),
+                max_group_id = max_group_id,
+                cached_bounds_timestamp = cached_bounds_timestamp,
+                shape_timestamp = shape_timestamp++,
+                timestamp = timestamp++,
+            };
+        }
 
 	}
 }
