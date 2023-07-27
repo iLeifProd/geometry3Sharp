@@ -252,8 +252,7 @@ namespace g3
         }
         public static void Restore(ref Segment2d segment, BinaryReader reader)
         {
-            segment.Center.x = reader.ReadDouble();
-            segment.Center.y = reader.ReadDouble();
+            segment.Center = new Vector2d(reader.ReadDouble(), reader.ReadDouble());
             segment.Direction.x = reader.ReadDouble();
             segment.Direction.y = reader.ReadDouble();
             segment.Extent = reader.ReadDouble();
@@ -271,8 +270,7 @@ namespace g3
         }
         public static void Restore(ref Arc2d arc, BinaryReader reader)
         {
-            arc.Center.x = reader.ReadDouble();
-            arc.Center.y = reader.ReadDouble();
+			arc.Center = new Vector2d(reader.ReadDouble(), reader.ReadDouble());
             arc.Radius = reader.ReadDouble();
             arc.AngleStartDeg = reader.ReadDouble();
             arc.AngleEndDeg = reader.ReadDouble();
@@ -289,8 +287,7 @@ namespace g3
         }
         public static void Restore(ref Circle2d circle, BinaryReader reader)
         {
-            circle.Center.x = reader.ReadDouble();
-            circle.Center.y = reader.ReadDouble();
+			circle.Center = new Vector2d(reader.ReadDouble(), reader.ReadDouble());
             circle.Radius = reader.ReadDouble();
             circle.IsReversed = reader.ReadBoolean();
         }
@@ -339,7 +336,7 @@ namespace g3
             curve = null;
             int nType = reader.ReadInt32();
             if ( nType == 1 ) {
-                Segment2d segment = new Segment2d();
+                Segment2d segment = new Segment2d(Vector2d.Zero, Vector2d.Zero);
                 Restore(ref segment, reader);
                 curve = segment;
             } else if ( nType == 2 ) {

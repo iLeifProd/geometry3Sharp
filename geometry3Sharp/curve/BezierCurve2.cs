@@ -19,8 +19,11 @@ namespace g3
         Vector2d[] mDer3CtrlPoint;
         DenseMatrix mChoose;
 
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(1);
+		public Vector2d Center => SampleT(0.5);
 
-        public int Degree { get { return mDegree; } }
+		public int Degree { get { return mDegree; } }
         public Vector2d[] ControlPoints { get { return mCtrlPoint; } }
 
 
@@ -241,6 +244,9 @@ namespace g3
             }
         }
 
-
-    }
+		public bool Contains(Vector2d P, double epsilon)
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

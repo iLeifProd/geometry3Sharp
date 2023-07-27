@@ -24,12 +24,16 @@ namespace g3 {
 	//
 	public class EllipseArc2d : IParametricCurve2d
 	{
-		public Vector2d Center;
+		//public Vector2d Center;
 		public Vector2d Axis0, Axis1;
 		public Vector2d Extent;
 		public double AngleStartDeg;
 		public double AngleEndDeg;
-		public bool IsReversed;		// use ccw orientation instead of cw
+		public bool IsReversed;     // use ccw orientation instead of cw
+
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(1);
+		public Vector2d Center { get; set; }
 
 		public EllipseArc2d(Vector2d center, double rotationAngleDeg, double extent0, double extent1,
 		                 double startDeg, double endDeg) {
@@ -158,5 +162,9 @@ namespace g3 {
             Extent.y = xform.TransformScalar(Extent.y);
         }
 
-    }
+		public bool Contains(Vector2d P, double epsilon)
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

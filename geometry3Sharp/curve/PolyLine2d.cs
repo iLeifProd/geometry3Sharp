@@ -437,7 +437,14 @@ namespace g3
     {
         public PolyLine2d Polyline;
 
-        public bool IsClosed { get { return false; } }
+		public Vector2d P0 => Polyline.Start;
+		public Vector2d P1 => SampleT(ParamLength);
+		public Vector2d Center => SampleT(ParamLength / 2);
+
+		public Vector2d StartDir => (SampleT(1) - P0.Normalized);
+		public Vector2d EndDir => (P1 - SampleT(ParamLength - 1)).Normalized;
+
+		public bool IsClosed { get { return false; } }
 
         // can call SampleT in range [0,ParamLength]
         public double ParamLength { get { return Polyline.VertexCount; } }
@@ -456,7 +463,10 @@ namespace g3
             throw new NotImplementedException("Polygon2dCurve.TangentT");
         }
 
-        public bool HasArcLength { get { return true; } }
+		public bool Contains(Vector2d P, double epsilon) => Polyline.SegmentItr().Any(c => c.Contains(P, epsilon));
+
+
+		public bool HasArcLength { get { return true; } }
         public double ArcLength {
             get { return Polyline.ArcLength; }
         }

@@ -426,7 +426,7 @@ namespace g3
         /// <summary>
         /// walk through graph from fromVtx, in direction of eid, until we hit the next junction vertex
         /// </summary>
-        public static List<int> WalkToNextNonRegularVtx(DGraph2 graph, int fromVtx, int eid)
+        public static List<int> WalkToNextNonRegularVtx(this DGraph2 graph, int fromVtx, int eid)
         {
             List<int> path = new List<int>();
             path.Add(fromVtx);

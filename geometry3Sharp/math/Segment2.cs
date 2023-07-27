@@ -2,17 +2,22 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
+
+using g3.Intersections;
 
 namespace g3
 {
-	public struct Segment2d : ICloneable, IParametricCurve2d
+    public class Segment2d : ICloneable, IParametricCurve2d
     {
         // Center-direction-extent representation.
-        public Vector2d Center;
+        public Vector2d Center { get; set; }
         public Vector2d Direction;
         public double Extent;
+		public Vector2d StartDir => Direction;
+		public Vector2d EndDir => -Direction;
 
-        public Segment2d(Vector2d p0, Vector2d p1)
+		public Segment2d(Vector2d p0, Vector2d p1)
         {
             //update_from_endpoints(p0, p1);
             Center = 0.5 * (p0 + p1);
@@ -95,7 +100,61 @@ namespace g3
 			return Center + t * Direction;
         }
 
-        public double Project(Vector2d p)
+		public (IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p)
+        {
+            //Unfolded Contains function
+			(Vector2d p0, Vector2d p1) = (P0, P1);
+			Vector2d p0ToP = p - p0;
+
+			if (Math.Abs(p0ToP.DotPerp(Direction)) > MathUtil.ZeroTolerance)
+			{ return null; }
+
+			Vector2d p1ToP = p - p1;
+			if (((p0ToP.Dot(Direction) > MathUtil.Epsilon) && (p1ToP.Dot(-Direction) > MathUtil.Epsilon)) == false)
+            { return null; }
+
+            return (new Segment2d(p0, p), new Segment2d(p, p1));
+        }
+
+		public Line2d Perpendicular(Vector2d p)
+        {
+            //test
+            Vector2d dirToP = (p - Center);
+			double t = dirToP.Dot(Direction);
+
+            Vector2d vStart = Center + t * Direction;
+            dirToP = p - vStart;
+			dirToP = dirToP.LengthSquared < MathUtil.ZeroTolerance ? 
+                Direction.UnitPerp : dirToP.Normalized;
+
+			return new Line2d(vStart, dirToP);
+		}
+
+        public bool Contains(Vector2d p, double tol = MathUtil.ZeroTolerance)
+        {
+            (Vector2d p0, Vector2d p1) = (P0,  P1);
+            Vector2d p0ToP = p - p0;
+
+            // is collinear
+            if (Math.Abs(p0ToP.DotPerp(Direction)) > tol) { return false; }
+
+            Vector2d p1ToP = p - p1;
+            // is between two vectors
+			return (p0ToP.Dot(Direction) > tol) && (p1ToP.Dot(-Direction) > tol);
+		}
+
+		public double? GetArcLength(Vector2d P)
+        {
+            if (Contains(P) == false)
+            {
+                return null;
+            }
+
+            return P.Distance(P0);
+        }
+
+
+		public double Project(Vector2d p)
         {
             return (p - Center).Dot(Direction);
         }
@@ -212,14 +271,23 @@ namespace g3
             return (det > tol ? +1 : (det < -tol ? -1 : 0));
         }
 
+		public static int WhichSide(Vector2d a, Vector2d b, Vector2d test, double tol = 0)
+		{
+			double x0 = test.x - a.x;
+			double y0 = test.y - a.y;
+			double x1 = b.x - a.x;
+			double y1 = b.y - a.y;
+			double det = x0 * y1 - x1 * y0;
+			return (det > tol ? +1 : (det < -tol ? -1 : 0));
+		}
 
 
 
-        /// <summary>
-        /// Test if segments intersect. Returns true for parallel-line overlaps.
-        /// Returns same result as IntrSegment2Segment2.
-        /// </summary>
-        public bool Intersects(ref Segment2d seg2, double dotThresh = double.Epsilon, double intervalThresh = 0)
+		/// <summary>
+		/// Test if segments intersect. Returns true for parallel-line overlaps.
+		/// Returns same result as IntrSegment2Segment2.
+		/// </summary>
+		public bool Intersects(ref Segment2d seg2, double dotThresh = double.Epsilon, double intervalThresh = 0)
         {
             // see IntrLine2Line2 and IntrSegment2Segment2 for details on this code
 
@@ -253,7 +321,14 @@ namespace g3
             // lines are parallel but not collinear
             return false;
         }
-        public bool Intersects(Segment2d seg2, double dotThresh = double.Epsilon, double intervalThresh = 0) {
+
+		public IntersectionResult2d Intersect(IIntersectionItem2d target, double tolerance = MathUtil.ZeroTolerance)
+        {
+            SegmentIntersector2d intersector = new(this, tolerance);
+            return intersector.IntersectWith(target);
+        }
+
+		public bool Intersects(Segment2d seg2, double dotThresh = double.Epsilon, double intervalThresh = 0) {
             return Intersects(ref seg2, dotThresh, intervalThresh);
         }
 

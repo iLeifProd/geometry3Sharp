@@ -837,7 +837,14 @@ namespace g3
     {
         public Polygon2d Polygon;
 
-        public bool IsClosed { get { return true; } }
+		public Vector2d P0 => Polygon.Start;
+		public Vector2d P1 => SampleT(ParamLength);
+		public Vector2d Center => SampleT(ParamLength / 2);
+
+		public Vector2d StartDir => (SampleT(1) - P0.Normalized);
+		public Vector2d EndDir => (P1 - SampleT(ParamLength - 1)).Normalized;
+
+		public bool IsClosed { get { return true; } }
 
         // can call SampleT in range [0,ParamLength]
         public double ParamLength { get { return Polygon.VertexCount; } }
@@ -868,7 +875,10 @@ namespace g3
             Polygon.Reverse();
         }
 
-        public IParametricCurve2d Clone()
+		public bool Contains(Vector2d P, double epsilon) => Polygon.SegmentItr().Any(c => c.Contains(P, epsilon));
+
+
+		public IParametricCurve2d Clone()
         {
             return new Polygon2DCurve() { Polygon = new Polygon2d(this.Polygon) };
         }

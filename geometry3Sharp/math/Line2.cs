@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using g3.Intersections;
+
 namespace g3
 {
-    public struct Line2d
-    {
+	public struct Line2d : IIntersectionItem2d
+	{
         public Vector2d Origin;
         public Vector2d Direction;
 
@@ -93,12 +95,14 @@ namespace g3
             return Vector2d.MaxValue;
         }
 
+		public IntersectionResult2d Intersect(IIntersectionItem2d target, double tolerance = MathUtil.ZeroTolerance)
+		{
+            LineIntersector lineIntersector = new(this, tolerance);
+            return lineIntersector.IntersectWith(target);
+		}
 
-
-
-
-        // conversion operators
-        public static implicit operator Line2d(Line2f v)
+		// conversion operators
+		public static implicit operator Line2d(Line2f v)
         {
             return new Line2d(v.Origin, v.Direction);
         }
