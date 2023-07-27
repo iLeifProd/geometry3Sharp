@@ -4,6 +4,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 
+using g3.Intersections;
+using g3.Trimming;
+
 namespace g3
 {
 
@@ -44,15 +47,24 @@ namespace g3
 
 
 
-	public interface IParametricCurve2d
+	public interface IParametricCurve2d : IIntersectionItem2d
 	{
+		Vector2d P0 { get; }
+		Vector2d P1 { get; }
+		Vector2d Center { get; }
+		Vector2d StartDir => (SampleT(0.05) - P0).Normalized;
+		Vector2d EndDir => (P1 - SampleT(0.95)).Normalized;
+
 		bool IsClosed {get;}
 
 		// can call SampleT in range [0,ParamLength]
 		double ParamLength {get;}
 		Vector2d SampleT(double t);
         Vector2d TangentT(double t);        // returns normalized vector
-
+		Line2d Perpendicular(Vector2d P) => throw new NotImplementedException();
+		double? GetArcLength(Vector2d P) => throw new NotImplementedException();
+		(IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p) => throw new NotImplementedException();  
+		bool Contains(Vector2d P, double epsilon = MathUtil.ZeroTolerance);
 		bool HasArcLength {get;}
 		double ArcLength {get;}
 		Vector2d SampleArcLength(double a);
@@ -62,11 +74,14 @@ namespace g3
         bool IsTransformable { get; }
         void Transform(ITransform2 xform);
 
-        IParametricCurve2d Clone();
+		//ITrimmer Trim { get; } 
+
+
+		IParametricCurve2d Clone();
 	}
 
 
-    public interface IMultiCurve2d
+    public interface IMultiCurve2d : IEnumerable<IParametricCurve2d>, IParametricCurve2d
     {
         ReadOnlyCollection<IParametricCurve2d> Curves { get; }
     }

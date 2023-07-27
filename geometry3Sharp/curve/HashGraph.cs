@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,8 +11,15 @@ using System.Threading.Tasks;
 
 namespace g3
 {
+	public enum MoveDirection { ToPoint, FromPoint }
+
 	public class HashGraph
 	{
+		public class JunctionStrategy
+		{
+
+		}
+
 		public static double VectorToHashRoundCount { get; set; } = 10;
 		public DGraph2 Graph => _graph; //maybe need to return cloned graph for allow synchronization with hashes
 		protected DGraph2 _graph = new();
@@ -20,6 +28,7 @@ namespace g3
 		public int VertexesCount => _graph.VertexCount;
 		public IEnumerable<Vector2d> Vectors => GetVectors();
 		public HashSet<Vector2d> Junctions => GetJunctionVectors();
+		public HashSet<Vector2d> Boundaries => GetBoundariesVectors();
 
 		protected Dictionary<int, int> _hashToVertexIdMap = new();
 		protected Dictionary<int, int> _vertexIdToHashMap = new();
@@ -36,6 +45,107 @@ namespace g3
 			AppendEdge(edgeStart, edgeEnd);
 		}
 
+		public bool TryGetHashVertex(Vector2d v, [NotNullWhen(true)] out HashVertex? hashVertex)
+		{
+			hashVertex = null;
+			if (TryGetVertexId(v, out int id) == false) { return false; }
+
+			hashVertex = new(this, Graph.GetVertex(id), id, _vertexIdToHashMap[id]);
+			return true;
+		}
+
+		public bool TryGetHashVertex(int vId, [NotNullWhen(true)] out HashVertex? hashVertex)
+		{
+			hashVertex = null;
+			if (ContainsVertexId(vId) == false)
+			{ return false; }
+
+			hashVertex = new(this, Graph.GetVertex(vId), vId, _vertexIdToHashMap[vId]);
+			return true;
+		}
+
+		public bool TryGetHashVertexByHash(int vHash, [NotNullWhen(true)] out HashVertex? hashVertex)
+		{
+			hashVertex = null;
+			if (TryGetVertexId(vHash, out int id) == false) { return false; }
+
+			hashVertex = new(this, Graph.GetVertex(id), id, _vertexIdToHashMap[id]);
+			return true;
+		}
+
+		public HashEdge GetHashEdge(int eId)
+		{
+			var verts = Graph.GetEdgeV(eId);
+			HashEdge edge = new(eId, GetHashVertex(verts.a), GetHashVertex(verts.b));
+			return edge;
+		}
+
+		public HashEdge GetHashEdge(int eId, int nextVId)
+		{
+			var vertexes = Graph.GetEdgeV(eId);
+			if (nextVId != vertexes.a && nextVId != vertexes.b)
+			{
+				throw new Exception("Next VId is not edge`s vertex");
+			}
+
+			HashEdge edge = (vertexes.b == nextVId) ?
+				new(eId, GetHashVertex(vertexes.a), GetHashVertex(vertexes.b)) :
+				new(eId, GetHashVertex(vertexes.b), GetHashVertex(vertexes.a));
+			
+			return edge;
+		}
+
+		public HashVertex GetHashVertex(int vId) => new(this, Graph.GetVertex(vId), vId, _vertexIdToHashMap[vId]);
+		
+
+		public HashVertex GetHashVertex(Vector2d v)
+		{
+			int hash = ToHash(v);
+			return new(this, v, _hashToVertexIdMap[hash], hash);
+		}
+
+		//TODO: direction principle works wrong
+		public (Vector2d nV, int eId, double diff)? FindNearestNeighborEdgeIdByAngle(int vId, double targetAngle, double angleLimit = MathUtil.TwoPI)
+		{
+			Vector2d v = GetVector(vId);
+
+			Dictionary<Vector2d, int> neighborToEdgeIdMap = GetNeighborsWithEdgeId(vId);
+
+			if (neighborToEdgeIdMap.Count == 0)
+			{
+				return null;
+			}
+
+			if (neighborToEdgeIdMap.Count == 1)
+			{
+				var (nV, eId) = neighborToEdgeIdMap.First();
+				double angleDiff = MathUtil.MinimalAngleDiff(v, nV, targetAngle);
+
+				if (targetAngle > angleLimit)
+				{
+					return null;
+				}
+
+				return (nV, eId, angleDiff);
+			}
+
+			SortedDictionary<double, (Vector2d, int)> anglesDiff = new();
+
+			foreach (var (nV, eId) in neighborToEdgeIdMap)
+			{
+				double angleDiff = MathUtil.MinimalAngleDiff(v, nV, targetAngle);
+				anglesDiff[angleDiff] = (nV, eId);
+			}
+
+			var minDiff = anglesDiff.First();
+
+			if (targetAngle > angleLimit)
+			{
+				return null;
+			}
+
+			return (minDiff.Value.Item1, minDiff.Value.Item2, minDiff.Key);
+		}
 
 		public HashGraph FindConnectedEdges(HashGraph connection)
 		{
@@ -127,9 +237,109 @@ namespace g3
 			return _graph.GetVtxEdges(_hashToVertexIdMap[vHash]);
 		}
 
+		public int GetAnotherPointOnEdge(int eId, int vId)
+		{
+			Index2i edgeV = Graph.GetEdgeV(eId);
+
+			int anotherVId = edgeV.a == vId ? edgeV.b : edgeV.a;
+			return anotherVId;
+		}
+
+		public (int eId, int vId)? MoveNextTowardPoint(int eId, int toPointId, bool isJunctionsProcced = false)
+		{
+			//if ((edgeV.a == pointId || edgeV.b == pointId) == false)
+			//{
+			//	return null;
+			//}
+
+			if (Graph.GetVtxEdgeCount(toPointId) == 2)
+			{
+				var neighbors = GetNeighborEdgesIdsWithVectorId(toPointId);
+				if (neighbors.Remove(eId) != false)
+				{
+					return (neighbors.First().Key, neighbors.First().Value);
+				}
+			}
+			else if (isJunctionsProcced && Graph.GetVtxEdgeCount(toPointId) > 2)
+			{
+				//Junction calculation
+				return null;
+			}
+
+			return null;
+		}
+
+		public HashEdge? MoveNextFromPoint(int eId, int fromPointId, JunctionStrategy junctionStrategy = null)
+		{
+			int toPointId = GetAnotherPointOnEdge(eId, fromPointId);
+
+
+			//if ((edgeV.a == pointId || edgeV.b == pointId) == false)
+			//{
+			//	return null;
+			//}
+
+			var neighbors = GetNeighborEdgesIdsWithVectorId(toPointId);
+
+			if (neighbors.Count == 2)
+			{
+				if (neighbors.Remove(eId) != false)
+				{
+					return new(neighbors.First().Key, GetHashVertex(toPointId), GetHashVertex(neighbors.First().Value));
+				}
+			}
+			else if (neighbors.Count > 2 && junctionStrategy != null)
+			{
+				//HashVertex junction = GetHashVertex(toPointId);
+				//proceedJunction.Invoke(junction);
+			}
+
+			return null;
+		}
+
 		public IEnumerable<Vector2d> GetNeighborVectors(Vector2d v)
 		{
 			return GetNeighborVectorsByHash(ToHash(v));
+		}
+
+		public Dictionary<Vector2d, int> GetNeighborsWithEdgeId(Vector2d v)
+		{
+			return GetNeighborsWithEdgeId(GetVertexId(v));
+		}
+
+		public Dictionary<Vector2d, int> GetNeighborsWithEdgeId(int vId)
+		{
+			var edgeIds = Graph.GetVtxEdges(vId);
+			Dictionary<Vector2d, int> neighborToEdgeIdMap = new();
+
+			foreach (var eId in edgeIds)
+			{
+				var edgeNeighbors = Graph.GetEdgeV(eId);
+				int vNeighborId = (edgeNeighbors.a == vId) ? edgeNeighbors.b : edgeNeighbors.a;
+				Vector2d vNeighbor = GetVector(vNeighborId);
+				neighborToEdgeIdMap[vNeighbor] = eId;
+			}
+
+			return neighborToEdgeIdMap;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns>EdgeId, VertexId</returns>
+		public Dictionary<int, int> GetNeighborEdgesIdsWithVectorId(int vId)
+		{
+			var edgeIds = Graph.GetVtxEdges(vId);
+			Dictionary<int, int> neighborEdgeIdsToVectorIdsMap = new();
+
+			foreach (var eId in edgeIds)
+			{
+				var edgeNeighbors = Graph.GetEdgeV(eId);
+				int vNeighborId = (edgeNeighbors.a == vId) ? edgeNeighbors.b : edgeNeighbors.a;
+				neighborEdgeIdsToVectorIdsMap[eId] = vNeighborId;
+			}
+
+			return neighborEdgeIdsToVectorIdsMap;
 		}
 
 		public IEnumerable<Vector2d> GetNeighborVectors(int vId)
@@ -249,6 +459,51 @@ namespace g3
 			}
 
 			return junctionsHashes;
+		}
+
+		public HashSet<Vector2d> GetBoundariesVectors()
+		{
+			var graph = Graph;
+			HashSet<Vector2d> boundaries = new();
+			foreach (int vId in graph.VertexIndices())
+			{
+				if (graph.IsBoundaryVertex(vId))
+				{
+					boundaries.Add(GetVector(vId));
+				}
+			}
+
+			return boundaries;
+		}
+
+		public HashSet<int> GetBoundariesIds()
+		{
+			var graph = Graph;
+			HashSet<int> boundaries = new();
+			foreach (int vId in graph.VertexIndices())
+			{
+				if (graph.IsBoundaryVertex(vId))
+				{
+					boundaries.Add(vId);
+				}
+			}
+
+			return boundaries;
+		}
+
+		public HashSet<int> GetBoundariesHashes()
+		{
+			var graph = Graph;
+			HashSet<int> boundariesHashes = new();
+			foreach (int vId in graph.VertexIndices())
+			{
+				if (graph.IsBoundaryVertex(vId))
+				{
+					boundariesHashes.Add(_vertexIdToHashMap[vId]);
+				}
+			}
+
+			return boundariesHashes;
 		}
 
 		public bool ContainsVertexId(int vId)

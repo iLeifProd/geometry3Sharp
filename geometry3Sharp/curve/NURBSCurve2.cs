@@ -8,38 +8,42 @@ namespace g3
     // ported from WildMagic5 NURBSCurve2
     public class NURBSCurve2 : BaseCurve2, IParametricCurve2d
     {
-        // Construction and destruction. Internal copies of the
-        // input arrays are made, so to dynamically change control points,
-        // control weights, or knots, you must use the 'SetControlPoint',
-        // 'GetControlPoint', 'SetControlWeight', 'GetControlWeight', and 'Knot'
-        // member functions.
+		// Construction and destruction. Internal copies of the
+		// input arrays are made, so to dynamically change control points,
+		// control weights, or knots, you must use the 'SetControlPoint',
+		// 'GetControlPoint', 'SetControlWeight', 'GetControlWeight', and 'Knot'
+		// member functions.
 
-        // The homogeneous input points are (x,y,w) where the (x,y) values are
-        // stored in the ctrlPoint array and the w values are stored in the
-        // ctrlWeight array.  The output points from curve evaluations are of
-        // the form (x',y') = (x/w,y/w).
+		// The homogeneous input points are (x,y,w) where the (x,y) values are
+		// stored in the ctrlPoint array and the w values are stored in the
+		// ctrlWeight array.  The output points from curve evaluations are of
+		// the form (x',y') = (x/w,y/w).
 
-        // Uniform spline.  The number of control points is n+1 >= 2.  The degree
-        // of the spline is d and must satisfy 1 <= d <= n.  The knots are
-        // implicitly calculated in [0,1].  If open is 'true', the spline is
-        // open and the knots are
-        //   t[i] = 0,               0 <= i <= d
-        //          (i-d)/(n+1-d),   d+1 <= i <= n
-        //          1,               n+1 <= i <= n+d+1
-        // If open is 'false', the spline is periodic and the knots are
-        //   t[i] = (i-d)/(n+1-d),   0 <= i <= n+d+1
-        // If loop is 'true', extra control points are added to generate a closed
-        // curve.  For an open spline, the control point array is reallocated and
-        // one extra control point is added, set to the first control point
-        // C[n+1] = C[0].  For a periodic spline, the control point array is
-        // reallocated and the first d points are replicated.  In either case the
-        // knot array is calculated accordingly.
+		// Uniform spline.  The number of control points is n+1 >= 2.  The degree
+		// of the spline is d and must satisfy 1 <= d <= n.  The knots are
+		// implicitly calculated in [0,1].  If open is 'true', the spline is
+		// open and the knots are
+		//   t[i] = 0,               0 <= i <= d
+		//          (i-d)/(n+1-d),   d+1 <= i <= n
+		//          1,               n+1 <= i <= n+d+1
+		// If open is 'false', the spline is periodic and the knots are
+		//   t[i] = (i-d)/(n+1-d),   0 <= i <= n+d+1
+		// If loop is 'true', extra control points are added to generate a closed
+		// curve.  For an open spline, the control point array is reallocated and
+		// one extra control point is added, set to the first control point
+		// C[n+1] = C[0].  For a periodic spline, the control point array is
+		// reallocated and the first d points are replicated.  In either case the
+		// knot array is calculated accordingly.
 		//
 		// [RMS] "open" and "loop" are super-confusing here. Perhaps NURBSCurve2 should
 		//   be refactored into several subclasses w/ different constructors, so that
 		//   the naming makes sense?
 
-        public NURBSCurve2(int numCtrlPoints, Vector2d[] ctrlPoint, double[] ctrlWeight, int degree, bool loop, bool open)
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(1);
+		public Vector2d Center => SampleT(0.5);
+
+		public NURBSCurve2(int numCtrlPoints, Vector2d[] ctrlPoint, double[] ctrlWeight, int degree, bool loop, bool open)
             : base(0,1)
         {
             if (numCtrlPoints < 2)
@@ -443,10 +447,14 @@ namespace g3
                 mCtrlPoint[k] = xform.TransformP(mCtrlPoint[k]);
         }
 
+		public bool Contains(Vector2d P, double epsilon)
+		{
+			throw new NotImplementedException();
+		}
 
-        // returned list is set of unique knot values in range [0,1], ie
-        // with no duplicates at repeated knots
-        public List<double> GetParamIntervals() {
+		// returned list is set of unique knot values in range [0,1], ie
+		// with no duplicates at repeated knots
+		public List<double> GetParamIntervals() {
 			List<double> l = new List<double>();
 			l.Add(0);
 			for ( int i = 0; i < mBasis.KnotCount; ++i ) {

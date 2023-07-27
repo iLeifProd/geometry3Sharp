@@ -3,17 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
+using g3.Intersections;
 
 namespace g3 {
 
 	public class Arc2d : IParametricCurve2d
 	{
-		public Vector2d Center;
+		public Vector2d Center { get; set; }
 		public double Radius;
 		public double AngleStartDeg;
 		public double AngleEndDeg;
-		public bool IsReversed;		// use ccw orientation instead of cw
-		
+		public bool IsReversed;     // use ccw orientation instead of cw
+
+		public Vector2d StartDir => (SampleArcLength(1) - P0).Normalized;
+		public Vector2d EndDir => (P1 - SampleArcLength(ArcLength - 1)).Normalized;
 
 		public Arc2d(Vector2d center, double radius, double startDeg, double endDeg)
 		{
@@ -48,7 +51,7 @@ namespace g3 {
         {
             Vector2d ds = vStart - vCenter;
             Vector2d de = vEnd - vCenter;
-            Debug.Assert(Math.Abs(ds.LengthSquared - de.LengthSquared) < MathUtil.ZeroTolerancef);
+            //Debug.Assert(Math.Abs(ds.LengthSquared - de.LengthSquared) < MathUtil.ZeroTolerancef);
             AngleStartDeg = Math.Atan2(ds.y, ds.x) * MathUtil.Rad2Deg;
             AngleEndDeg = Math.Atan2(de.y, de.x) * MathUtil.Rad2Deg;
             if (AngleEndDeg < AngleStartDeg)
@@ -109,6 +112,30 @@ namespace g3 {
             return tangent;
         }
 
+        public double? GetArcLength(Vector2d P)
+        {
+			if (Contains(P, MathUtil.Epsilon) == false)
+			{
+				return null;
+			}
+
+			Arc2d arcBeforeP = new(Center, P0, P);
+            
+            return arcBeforeP.ArcLength;
+		}
+
+		public (IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p)
+        {
+			if (Contains(p) == false)
+			{
+                return null;
+			}
+            //TODO: Is need check P == P1, P0?
+            Arc2d left = new(Center, P0, p);
+            Arc2d right = new(Center, p, P1);
+
+            return (left, right);
+		}
 
 		public bool HasArcLength { get {return true;} }
 
@@ -150,8 +177,6 @@ namespace g3 {
             SetFromCenterAndPoints(vCenter, vStart, vEnd);
         }
 
-
-
         public AxisAlignedBox2d Bounds {
             get {
                 // extrema of arc are P0, P1, and any axis-crossings that lie in arc span.
@@ -173,13 +198,80 @@ namespace g3 {
                 return bounds;
             }
         }
-        private static readonly Vector2d[] bounds_dirs = new Vector2d[4] {
+
+
+
+		private static readonly Vector2d[] bounds_dirs = new Vector2d[4] {
             Vector2d.AxisX, Vector2d.AxisY, -Vector2d.AxisX, -Vector2d.AxisY };
 
+		public IntersectionResult2d Intersect(IIntersectionItem2d target, double tolerance = MathUtil.ZeroTolerance)
+		{
+			ArcIntersector2d intersector = new(this, tolerance);
+			return intersector.IntersectWith(target);
+		}
+
+		// This function assumes P is on the circle containing the arc (with
+		// possibly a small amount of floating-point rounding error). NOTE:
+		// I have kept this code so that clients within the GTE library are
+		// not broken if instead I had removed this function. It will be
+		// deprecated for GTL.
+		public bool Contains(Vector2d P)
+        {
+			Vector2d diffPE0 = P - P0;
+		    Vector2d diffE1E0 = P1 - P0;
+		    double dotPerp = diffPE0.DotPerp(diffE1E0);
+            return dotPerp >= 0;
+        }
+
+	    // Test whether P is on the arc.
+	    // 
+	    // Formulated for real arithmetic, |P-C| - r = 0 is necessary for P to
+	    // be on the circle of the arc. If P is on the circle, then P is on
+	    // the arc from E0 to E1 when it is on the side of the line containing
+	    // E0 with normal Perp(E1-E0) where Perp(u,v) = (v,-u). This test
+	    // works for any angle between E0-C and E1-C, even if the angle is
+	    // larger or equal to pi radians.
+	    //
+	    // Formulated for floating-point or rational types, rounding errors
+	    // cause |P-C| - r rarely to be 0 when P is on (or numerically near)
+	    // the circle. To allow for this, choose a small and nonnegative
+	    // tolerance epsilon. The test concludes that P is on the circle when
+	    // ||P-C| - r| <= epsilon;otherwise, P is not on the circle. If P is
+	    // on the circle (in the epsilon-tolerance sense), the side-of-line
+	    // test of the previous/ paragraph is applied.
+	    public bool Contains(Vector2d P, double epsilon)
+        {
+            // If epsilon is negative, the tolerance behaves as if a value of
+            // zero was passed for epsilon.
+
+			double length = P.Distance(Center);
+			if (Math.Abs(length - Radius) <= epsilon)
+            {
+                Vector2d diffPE0 = P - P0;
+		        Vector2d diffE1E0 = P1 - P0;
+		        double dotPerp = diffPE0.DotPerp(diffE1E0);
+                return dotPerp >= 0;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+		public Line2d Perpendicular(Vector2d toP)
+        {
+			var res = Circle2d.FindPerpendicular(toP, Center, Radius);
+
+			if (res.isPtOnCenter == true || res.line == null)
+			{
+				return Line2d.FromPoints(SampleT(0.5), toP);
+			}
+
+			return res.line.Value;
+		}
 
 
-
-        public double Distance(Vector2d point)
+		public double Distance(Vector2d point)
         {
             Vector2d PmC = point - Center;
             double lengthPmC = PmC.Length;
@@ -198,10 +290,22 @@ namespace g3 {
             } else {
                 return Radius;
             }
-        }
+		}
 
+		public bool IsClockwise()
+		{
+			bool result = false;
 
-        public Vector2d NearestPoint(Vector2d point)
+			if ((P0 - Center).DotPerp(P1 - Center) < 0)
+			{
+				result = !result;
+			}
+
+			return result;
+
+			//return IsReversed ? !result : result;
+		}
+		public Vector2d NearestPoint(Vector2d point)
         {
             Vector2d PmC = point - Center;
             double lengthPmC = PmC.Length;
@@ -217,6 +321,41 @@ namespace g3 {
                 return SampleT(0.5);        // all points equidistant
         }
 
+        public double? FindAngleDeg(Vector2d point, double tolerance)
+        {
+            //TODO: Not tested
+            Vector2d pDiff = point - Center;
 
+			if (Math.Abs(Radius * Radius - pDiff.LengthSquared) <= tolerance)
+			{
+				return null;
+			}
+
+			double pAngle = Math.Atan2(pDiff.y, pDiff.x);
+            double pAngleDeg = pAngle * MathUtil.Rad2Deg;
+
+            if (pAngleDeg < AngleStartDeg)
+            {
+                if (pAngle <= AngleStartDeg - tolerance)
+				{
+                    return null;
+                }
+                pAngle = AngleStartDeg;
+            }
+			else if (pAngleDeg > AngleEndDeg)
+			{
+				if (pAngle >= AngleEndDeg + tolerance)
+				{
+					return null;
+				}
+				pAngle = AngleEndDeg;
+			}
+
+            return pAngle;
+			//if (AngleStartDeg < pAngleDeg - tolerance && AngleEndDeg > pAngleDeg + tolerance)
+            //{
+            //    return null;
+            //}
+        }
 	}
 }

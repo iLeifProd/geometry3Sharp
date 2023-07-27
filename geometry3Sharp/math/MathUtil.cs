@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Linq;
 
 namespace g3
 {
 
-    public static class MathUtil
+	public static class MathUtil
     {
 
         public const double Deg2Rad = (Math.PI / 180.0);
@@ -30,18 +30,18 @@ namespace g3
         public const float Epsilonf = 1.192092896e-07F;
 
 
-        public static bool IsFinite(double d) {
+        public static bool IsFinite(this double d) {
             return double.IsInfinity(d) == false && double.IsNaN(d) == false;
         }
-        public static bool IsFinite(float d) {
+        public static bool IsFinite(this float d) {
             return float.IsInfinity(d) == false && float.IsNaN(d) == false;
         }
 
 
-        public static bool EpsilonEqual(double a, double b, double epsilon = MathUtil.Epsilon) {
+        public static bool EpsilonEqual(this double a, double b, double epsilon = MathUtil.Epsilon) {
             return Math.Abs(a - b) <= epsilon;
         }
-        public static bool EpsilonEqual(float a, float b, float epsilon = MathUtil.Epsilonf) {
+        public static bool EpsilonEqual(this float a, float b, float epsilon = MathUtil.Epsilonf) {
             return (float)Math.Abs(a - b) <= epsilon;
         }
 
@@ -195,6 +195,9 @@ namespace g3
         }
 
 
+        public static double Min(params double[] digits) => digits.Min();
+        public static double Max(params double[] digits) => digits.Max();
+
         public static double Min(double a, double b, double c) {
             return Math.Min(a, Math.Min(b, c));
         }
@@ -305,6 +308,18 @@ namespace g3
             return fAngle;
         }
 
+		public static double MinimalAngleDiff(Vector2d v1, Vector2d v2, double targetAngle)
+		{
+			double diff = Math.Abs(v1.DirectionAngleSigned(v2) - targetAngle);
+			return (diff <= Math.PI) ? diff : MathUtil.TwoPI - diff;
+		}
+
+		public static double DirectionAngleSigned(this Vector2d vFrom, Vector2d vTo)
+        {
+            Vector2d dir = vTo - vFrom;
+            double angle = Math.Atan2(dir.y, dir.x);
+            return angle;
+        }
 
         public static float PlaneAngleSignedD(Vector2f vFrom, Vector2f vTo)
         {
@@ -657,7 +672,5 @@ namespace g3
                 done = (i == 0);
             }
         }
-
-
     }
 }

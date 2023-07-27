@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 
 namespace g3
 {
@@ -25,13 +26,15 @@ namespace g3
         // To be an ellipse, M must have all positive eigenvalues.
 
 
-        public Vector2d Center;
         public Vector2d Axis0, Axis1;
         public Vector2d Extent;
-        public bool IsReversed;		// use ccw orientation instead of cw
+        public bool IsReversed;     // use ccw orientation instead of cw
 
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(1);
+		public Vector2d Center { get; set; }
 
-        public Ellipse2d(Vector2d center, Vector2d axis0, Vector2d axis1, Vector2d extent) {
+		public Ellipse2d(Vector2d center, Vector2d axis0, Vector2d axis1, Vector2d extent) {
             Center = center;
             Axis0 = axis0;
             Axis1 = axis1;
@@ -185,8 +188,12 @@ namespace g3
             return (Evaluate(point) <= (double)0);
         }
 
+		public bool Contains(Vector2d P, double epsilon)
+		{
+			return (Evaluate(P) <= epsilon);
+		}
 
-        static void Convert(double[] coeff, ref Matrix2d A, ref Vector2d B, ref double C)
+		static void Convert(double[] coeff, ref Matrix2d A, ref Vector2d B, ref double C)
         {
             C = coeff[0];
             B.x = coeff[1];

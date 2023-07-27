@@ -1,14 +1,19 @@
 ﻿using System;
 
+using g3.Intersections;
+
 namespace g3
 {
     public class Circle2d : IParametricCurve2d
     {
-		public Vector2d Center;
 		public double Radius;
-		public bool IsReversed;		// use ccw orientation instead of cw
+		public bool IsReversed;     // use ccw orientation instead of cw
 
-        public Circle2d(double radius) {
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(1);
+		public Vector2d Center { get; set; }
+
+		public Circle2d(double radius) {
             IsReversed = false;
             Center = Vector2d.Zero;
             Radius = radius;
@@ -31,6 +36,49 @@ namespace g3
             get { return (IsReversed) ? (-1.0 / Radius) : (1.0 / Radius); }
         }
 
+		public Line2d Perpendicular(Vector2d toP)
+		{
+			var res = FindPerpendicular(toP, Center, Radius);
+
+			if (res.isPtOnCenter == true || res.line == null)
+			{
+				return Line2d.FromPoints(SampleT(0.5), toP);
+			}
+
+			return res.line.Value;
+		}
+
+		public double? GetArcLength(Vector2d P)
+		{
+			if (Contains(P, MathUtil.Epsilon) == false)
+			{
+				return null;
+			}
+
+			Arc2d arcBeforeP = new(Center, P0, P);
+
+			return arcBeforeP.ArcLength;
+		}
+
+		public static (bool isPtOnCenter, Line2d? line) FindPerpendicular(Vector2d toP, Vector2d center, double radius)
+		{
+			Vector2d dir = toP - center;
+
+			if (dir.LengthSquared < MathUtil.ZeroTolerance)
+			{
+				return (true, null);
+			}
+
+			Vector2d normDir = dir.Normalized;
+			Vector2d onCircleP = normDir * radius;
+
+			if (dir.LengthSquared < radius * radius)
+			{
+				normDir = -normDir;
+			}
+
+			return (false, new Line2d(onCircleP, normDir));
+		}
 
 		public bool IsClosed {
 			get { return true; }
@@ -91,7 +139,6 @@ namespace g3
             return tangent;
         }
 
-
 		public bool HasArcLength { get {return true;} }
 
 		public double ArcLength {
@@ -113,8 +160,17 @@ namespace g3
             return d <= Radius * Radius;
         }
 
+		public bool Contains(Vector2d P, double epsilon)
+		{
+			// If epsilon is negative, the tolerance behaves as if a value of
+			// zero was passed for epsilon.
 
-        public double Circumference {
+			double squaredLength = P.DistanceSquared(Center);
+			return Math.Abs(squaredLength - Radius * Radius) <= (epsilon * epsilon);
+		}
+
+
+		public double Circumference {
 			get { return MathUtil.TwoPI * Radius; }
             set { Radius = value / MathUtil.TwoPI; }
 		}
@@ -132,7 +188,13 @@ namespace g3
 			get { return new AxisAlignedBox2d(Center, Radius, Radius); }
 		}
 
-        public double SignedDistance(Vector2d pt)
+		public IntersectionResult2d Intersect(IIntersectionItem2d target, double tolerance = MathUtil.ZeroTolerance)
+		{
+			CircleIntersector2d intersector = new(this, tolerance);
+			return intersector.IntersectWith(target);
+		}
+
+		public double SignedDistance(Vector2d pt)
         {
             double d = Center.Distance(pt);
             return d - Radius;

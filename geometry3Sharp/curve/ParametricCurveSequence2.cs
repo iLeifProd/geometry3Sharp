@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
+
+using g3.Intersections;
 
 namespace g3 
 {
@@ -10,13 +14,17 @@ namespace g3
 		List<IParametricCurve2d> curves;
 		bool closed;
 
+		public Vector2d P0 => SampleT(0);
+		public Vector2d P1 => SampleT(ParamLength);
+		public Vector2d Center => SampleT(ParamLength / 2);
+
 		public ParametricCurveSequence2() {
 			curves = new List<IParametricCurve2d>();
 		}
 
 		public ParametricCurveSequence2(IEnumerable<IParametricCurve2d> curvesIn, bool isClosed = false) { 
 			curves = new List<IParametricCurve2d>(curvesIn);
-            closed = true;
+            closed = isClosed;
 		}
 
 		public int Count {
@@ -51,6 +59,7 @@ namespace g3
 				return sum;
 			}
 		}
+		public bool Contains(Vector2d P, double epsilon) => Curves.Any(c => c.Contains(P, epsilon) == true);
 
 		public Vector2d SampleT(double t) {
 			double sum = 0;
@@ -133,5 +142,14 @@ namespace g3
                 c.Transform(xform);
         }
 
-    }
+		public IntersectionResult2d Intersect(IIntersectionItem2d target, double tolerance = MathUtil.ZeroTolerance)
+		{
+			PolyCurveIntersector2d intersector = new(this, tolerance);
+			return intersector.IntersectWith(target);
+		}
+
+		public IEnumerator<IParametricCurve2d> GetEnumerator() => curves.GetEnumerator();
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+	}
 }
