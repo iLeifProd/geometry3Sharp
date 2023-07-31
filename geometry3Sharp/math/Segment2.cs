@@ -66,6 +66,9 @@ namespace g3
 			return Center + (2 * t - 1) * Extent * Direction;
 		}
 
+        public double DistanceTo(Vector2d point) => Math.Sqrt(DistanceSquared(point));
+		public double DistanceSquaredTo(Vector2d point) => DistanceSquared(point);
+
 		public double DistanceSquared(Vector2d p)
 		{
 			double t = (p - Center).Dot(Direction);
@@ -100,20 +103,21 @@ namespace g3
 			return Center + t * Direction;
         }
 
-		public (IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p)
+		public CurvePair? Split(Vector2d p)
         {
             //Unfolded Contains function
 			(Vector2d p0, Vector2d p1) = (P0, P1);
-			Vector2d p0ToP = p - p0;
+            if (Contains(p) == false)
+            {
+                return null;
+            }
 
-			if (Math.Abs(p0ToP.DotPerp(Direction)) > MathUtil.ZeroTolerance)
-			{ return null; }
+			if (p.DistanceSquared(p0) <= MathUtil.Epsilon || p.DistanceSquared(p1) <= MathUtil.Epsilon)
+			{
+				return new((new Segment2d(p0, p1)), null);
+			}
 
-			Vector2d p1ToP = p - p1;
-			if (((p0ToP.Dot(Direction) > MathUtil.Epsilon) && (p1ToP.Dot(-Direction) > MathUtil.Epsilon)) == false)
-            { return null; }
-
-            return (new Segment2d(p0, p), new Segment2d(p, p1));
+			return new(new Segment2d(p0, p), new Segment2d(p, p1));
         }
 
 		public Line2d Perpendicular(Vector2d p)
@@ -140,7 +144,11 @@ namespace g3
 
             Vector2d p1ToP = p - p1;
             // is between two vectors
-			return (p0ToP.Dot(Direction) > tol) && (p1ToP.Dot(-Direction) > tol);
+            double dotOne = p0ToP.Dot(Direction);
+            double dotTwo = p1ToP.Dot(-Direction);
+			return (dotOne > -tol) && (dotTwo > -tol);
+
+			//return (p0ToP.Dot(Direction) > tol) && (p1ToP.Dot(-Direction) > tol);
 		}
 
 		public double? GetArcLength(Vector2d P)
@@ -150,7 +158,16 @@ namespace g3
                 return null;
             }
 
-            return P.Distance(P0);
+			if (P.DistanceSquared(P0) <= MathUtil.Epsilon)
+			{
+				return 0;
+			}
+			else if (P.DistanceSquared(P1) <= MathUtil.Epsilon)
+			{
+				return ArcLength;
+			}
+
+			return P.Distance(P0);
         }
 
 
