@@ -26,6 +26,7 @@
     <Authors>Ryan Schmidt</Authors>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

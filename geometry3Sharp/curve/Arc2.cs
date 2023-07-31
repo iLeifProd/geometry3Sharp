@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics;
 using g3.Intersections;
+using System.Drawing;
 
 namespace g3 {
 
@@ -16,7 +17,7 @@ namespace g3 {
 		public bool IsReversed;     // use ccw orientation instead of cw
 
 		public Vector2d StartDir => (SampleArcLength(1) - P0).Normalized;
-		public Vector2d EndDir => (P1 - SampleArcLength(ArcLength - 1)).Normalized;
+		public Vector2d EndDir => (SampleArcLength(ArcLength - 1) - P1).Normalized;
 
 		public Arc2d(Vector2d center, double radius, double startDeg, double endDeg)
 		{
@@ -119,22 +120,38 @@ namespace g3 {
 				return null;
 			}
 
+			if (P.DistanceSquared(P0) <= MathUtil.Epsilon)
+			{
+				return 0;
+			}
+			else if (P.DistanceSquared(P1) <= MathUtil.Epsilon)
+			{
+				return ArcLength;
+			}
+
 			Arc2d arcBeforeP = new(Center, P0, P);
             
             return arcBeforeP.ArcLength;
 		}
 
-		public (IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p)
+		public CurvePair? Split(Vector2d p)
         {
 			if (Contains(p) == false)
 			{
                 return null;
 			}
-            //TODO: Is need check P == P1, P0?
-            Arc2d left = new(Center, P0, p);
+
+			(Vector2d p0, Vector2d p1) = (P0, P1);
+
+			if (p.DistanceSquared(p0) <= MathUtil.Epsilon || p.DistanceSquared(p1) <= MathUtil.Epsilon)
+			{
+				return new(Clone());
+			}
+
+			Arc2d left = new(Center, P0, p);
             Arc2d right = new(Center, p, P1);
 
-            return (left, right);
+            return new(left, right);
 		}
 
 		public bool HasArcLength { get {return true;} }
@@ -270,7 +287,8 @@ namespace g3 {
 			return res.line.Value;
 		}
 
-
+		public double DistanceTo(Vector2d point) => Distance(point);
+		public double DistanceSquaredTo(Vector2d point) => DistanceSquared(point);
 		public double Distance(Vector2d point)
         {
             Vector2d PmC = point - Center;
@@ -290,6 +308,35 @@ namespace g3 {
             } else {
                 return Radius;
             }
+		}
+
+		// Not so big performance win
+		public double DistanceSquared(Vector2d point)
+		{
+			Vector2d PmC = point - Center;
+			double lengthPmC = PmC.Length;
+			if (lengthPmC > MathUtil.Epsilon)
+			{
+				Vector2d dv = PmC / lengthPmC;
+				double theta = Math.Atan2(dv.y, dv.x) * MathUtil.Rad2Deg;
+				if (!(theta >= AngleStartDeg && theta <= AngleEndDeg))
+				{
+					double ctheta = MathUtil.ClampAngleDeg(theta, AngleStartDeg, AngleEndDeg);
+					double radians = ctheta * MathUtil.Deg2Rad;
+					double c = Math.Cos(radians), s = Math.Sin(radians);
+					Vector2d pos = new Vector2d(Center.x + Radius * c, Center.y + Radius * s);
+					return pos.DistanceSquared(point);
+				}
+				else
+				{
+					double distance = lengthPmC - Radius;
+					return Math.Abs(distance);
+				}
+			}
+			else
+			{
+				return Radius * Radius;
+			}
 		}
 
 		public bool IsClockwise()

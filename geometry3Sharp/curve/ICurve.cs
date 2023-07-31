@@ -53,7 +53,7 @@ namespace g3
 		Vector2d P1 { get; }
 		Vector2d Center { get; }
 		Vector2d StartDir => (SampleT(0.05) - P0).Normalized;
-		Vector2d EndDir => (P1 - SampleT(0.95)).Normalized;
+		Vector2d EndDir => (SampleT(0.95) - P1).Normalized;
 
 		bool IsClosed {get;}
 
@@ -63,8 +63,12 @@ namespace g3
         Vector2d TangentT(double t);        // returns normalized vector
 		Line2d Perpendicular(Vector2d P) => throw new NotImplementedException();
 		double? GetArcLength(Vector2d P) => throw new NotImplementedException();
-		(IParametricCurve2d left, IParametricCurve2d right)? Split(Vector2d p) => throw new NotImplementedException();  
+		CurvePair? Split(Vector2d p) => throw new NotImplementedException();  
 		bool Contains(Vector2d P, double epsilon = MathUtil.ZeroTolerance);
+		Vector2d NearestPoint(Vector2d point) => throw new NotImplementedException();
+		double DistanceTo(Vector2d point) => throw new NotImplementedException();
+		double DistanceSquaredTo(Vector2d point) => throw new NotImplementedException();
+
 		bool HasArcLength {get;}
 		double ArcLength {get;}
 		Vector2d SampleArcLength(double a);
