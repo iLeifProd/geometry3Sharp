@@ -4,6 +4,7 @@ using g3;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace gs
@@ -215,6 +216,42 @@ namespace gs
 				//System.Diagnostics.Debug.WriteLine("ClipperUtil.ConvertFromClipper: caught exception: " + e.Message);
 			}
 			return result;
+		}
+
+		public static PolyLine2d? ComputeOffsetPolyline(PolyLine2d poly, double fOffset, bool bSharp = false, double nPer360 = 16)
+		{
+			double nIntScale = GetIntScale(poly.Vertices);
+
+			CPolyPath clipper_poly = ConvertToClipper(poly, nIntScale);
+			CPolygonList clipper_polys = new CPolygonList() { clipper_poly };
+
+			CPolygonList dilate_solution = new CPolygonList();
+
+			try
+			{
+				ClipperOffset co = new ClipperOffset();
+				co.ArcTolerance = nIntScale * Math.Abs(fOffset) * (1 - Math.Cos(Math.PI / nPer360));
+
+				if (bSharp)
+					co.AddPaths(clipper_polys, JoinType.jtMiter, EndType.etOpenButt);
+				else
+					co.AddPaths(clipper_polys, JoinType.jtRound, EndType.etOpenButt);
+				co.Execute(ref dilate_solution, fOffset * nIntScale);
+			}
+			catch /*( Exception e )*/
+			{
+				//System.Diagnostics.Debug.WriteLine("ClipperUtil.ComputeOffsetPolygon: Clipper threw exception: " + e.Message);
+				return null;
+			}
+
+			if (dilate_solution.Count == 0)
+				return null;
+
+			if (dilate_solution.Count > 1)
+				throw new NotImplementedException();
+			
+			PolyLine2d polyRes = ConvertFromClipperPath(dilate_solution.First(), nIntScale);
+			return polyRes;
 		}
 
 		public static List<GeneralPolygon2d> ComputeOffsetPolygon(Polygon2d poly, double fOffset, bool bSharp = false, double nPer360 = 16)
