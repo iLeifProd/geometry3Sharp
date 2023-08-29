@@ -113,7 +113,26 @@ namespace g3 {
             return tangent;
         }
 
-        public double? GetArcLength(Vector2d P)
+		public IEnumerable<Vector2d> SampleByAngleStep(double angleStepDeg, bool includeStartAnglePoint = false)
+		{
+			double angleDeg = includeStartAnglePoint ? AngleStartDeg + angleStepDeg : AngleStartDeg;
+
+			angleDeg = Math.Min(angleDeg, AngleEndDeg);
+
+			while (angleDeg <= AngleEndDeg)
+			{
+				double theta = angleDeg * Math.PI / 180;
+				Vector2d sampled = new(
+					Center.x + Radius + Math.Cos(theta),
+					Center.y + Radius + Math.Sin(theta));
+
+				yield return sampled;
+
+				angleDeg += angleStepDeg;
+			}
+		}
+
+		public double? GetArcLength(Vector2d P)
         {
 			if (Contains(P, MathUtil.Epsilon) == false)
 			{
@@ -367,6 +386,8 @@ namespace g3 {
             } else 
                 return SampleT(0.5);        // all points equidistant
         }
+
+
 
         public double? FindAngleDeg(Vector2d point, double tolerance)
         {
